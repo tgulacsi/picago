@@ -105,13 +105,6 @@ func GetPhotos(client *http.Client, userID, albumID string) ([]Photo, error) {
 	}
 	photos := make([]Photo, 0, len(feed.Entries))
 	for _, entry := range feed.Entries {
-		albumURL := ""
-		for _, link := range entry.Links {
-			if link.Rel == "http://schemas.google.com/g/2005#feed" {
-				albumURL = link.URL
-				break
-			}
-		}
 		var lat, long float64
 		i := strings.Index(entry.Point, " ")
 		if i >= 1 {
@@ -135,7 +128,7 @@ func GetPhotos(client *http.Client, userID, albumID string) ([]Photo, error) {
 			Keywords:  strings.Split(entry.Media.Keywords, ","),
 			Published: entry.Published,
 			Updated:   entry.Updated,
-			URL:       albumURL,
+			URL:       entry.Media.Content.URL,
 			Latitude:  lat,
 			Longitude: long,
 		})

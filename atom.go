@@ -47,10 +47,10 @@ type Link struct {
 }
 
 type Media struct {
-	Title       string `xml:"http://search.yahoo.com/mrss title"`
-	Description string `xml:"description"`
-	Keywords    string `xml:"keywords"`
-	Content     `xml:"content"`
+	Title       string  `xml:"http://search.yahoo.com/mrss title"`
+	Description string  `xml:"description"`
+	Keywords    string  `xml:"keywords"`
+	Content     Content `xml:"content"`
 }
 
 type Content struct {
