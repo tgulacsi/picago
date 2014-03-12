@@ -1,6 +1,7 @@
-// Package picago implements a picasaweb walker
-//
-// https://developers.google.com/picasa-web/docs/2.0/developers_guide_protocol?hl=en
+// Copyright 2014 Tamás Gulácsi. All rights reserved.
+// Use of this source code is governed by an Apache 2.0
+// license that can be found in the LICENSE file.
+
 package picago
 
 import (
