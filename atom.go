@@ -17,27 +17,29 @@ type Atom struct {
 	Subtitle     string    `xml:"subtitle"`
 	Icon         string    `xml:"icon"`
 	Author       Author    `xml:"author"`
-	TotalResults int       `xml:"totalResults"`
+	NumPhotos    int       `xml:"numphotos"`
 	StartIndex   int       `xml:"startIndex"`
+	TotalResults int       `xml:"totalResults"`
 	ItemsPerPage int       `xml:"itemsPerPage"`
 	Entries      []Entry   `xml:"entry"`
 }
 
 type Entry struct {
-	ETag      string    `xml:"etag,attr"`
-	EntryID   string    `xml:"http://www.w3.org/2005/Atom id"`
-	ID        string    `xml:"http://schemas.google.com/photos/2007 id"`
-	Published time.Time `xml:"published"`
-	Updated   time.Time `xml:"updated"`
-	Title     string    `xml:"title"`
-	Summary   string    `xml:"summary"`
-	Links     []Link    `xml:"link"`
-	Author    Author    `xml:"author"`
-	Location  string    `xml:"http://schemas.google.com/photos/2007 location"`
-	NumPhotos int       `xml:"numphotos"`
-	Media     Media     `xml:"group"`
-	ExifUID   string    `xml:"tags>imageUniqueID"`
-	Point     string    `xml:"where>Point>pos"`
+	ETag      string       `xml:"etag,attr"`
+	EntryID   string       `xml:"http://www.w3.org/2005/Atom id"`
+	ID        string       `xml:"http://schemas.google.com/photos/2007 id"`
+	Published time.Time    `xml:"published"`
+	Updated   time.Time    `xml:"updated"`
+	Title     string       `xml:"title"`
+	Summary   string       `xml:"summary"`
+	Links     []Link       `xml:"link"`
+	Author    Author       `xml:"author"`
+	Location  string       `xml:"http://schemas.google.com/photos/2007 location"`
+	NumPhotos int          `xml:"numphotos"`
+	Content   EntryContent `xml:"content"`
+	Media     Media        `xml:"group"`
+	ExifUID   string       `xml:"tags>imageUniqueID"`
+	Point     string       `xml:"where>Point>pos"`
 }
 
 type Link struct {
@@ -47,14 +49,19 @@ type Link struct {
 }
 
 type Media struct {
-	Title       string  `xml:"http://search.yahoo.com/mrss title"`
-	Description string  `xml:"description"`
-	Keywords    string  `xml:"keywords"`
-	Content     Content `xml:"content"`
+	Title       string       `xml:"http://search.yahoo.com/mrss title"`
+	Description string       `xml:"description"`
+	Keywords    string       `xml:"keywords"`
+	Content     MediaContent `xml:"content"`
 }
 
-type Content struct {
+type MediaContent struct {
 	URL  string `xml:"url,attr"`
+	Type string `xml:"type,attr"`
+}
+
+type EntryContent struct {
+	URL  string `xml:"src,attr"`
 	Type string `xml:"type,attr"`
 }
 

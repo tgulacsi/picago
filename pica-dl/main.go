@@ -8,8 +8,13 @@ package main
 import (
 	"encoding/json"
 	"flag"
+	"io"
+	"io/ioutil"
 	"log"
+	"net/http"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/tgulacsi/picago"
 )
@@ -20,26 +25,42 @@ func main() {
 	flagSecret := flag.String("secret", os.Getenv("CLIENT_SECRET"), "application client secret")
 	flagCode := flag.String("code", os.Getenv("AUTH_CODE"), "authorization code")
 	flagTokenCache := flag.String("cache", "token-cache.json", "token cache filename")
+	flagDir := flag.String("dir", "", "directory to download images to")
+	flagDebugDir := flag.String("debug", "", "set to a valid path to save the response XMLs there")
 
 	flag.Parse()
+	picago.DebugDir = *flagDebugDir
 	userid := flag.Arg(0)
 
-	pica, err := picago.NewClient(*flagID, *flagSecret, *flagCode, *flagTokenCache)
+	client, err := picago.NewClient(*flagID, *flagSecret, *flagCode, *flagTokenCache)
 	if err != nil {
 		log.Fatalf("error with authorization: %v", err)
 	}
-	albums, err := picago.GetAlbums(pica, userid)
+	albums, err := picago.GetAlbums(client, userid)
 	if err != nil {
 		log.Fatalf("error listing albums: %v", err)
 	}
+	log.Printf("user %s has %d albums.", userid, len(albums))
 
+	download := *flagDir != ""
+	dir, fn := "", ""
 	for _, album := range albums {
 		albumJ, err := json.Marshal(album)
 		if err != nil {
 			log.Fatalf("error marshaling %#v: %v", album, err)
 		}
+		if download {
+			dir = filepath.Join(*flagDir, album.ID)
+			if err = os.MkdirAll(dir, 0750); err != nil {
+				log.Fatalf("cannot create directory %s: %v", dir, err)
+			}
+			fn = filepath.Join(dir, "album-"+album.ID+".json")
+			if err = ioutil.WriteFile(fn, albumJ, 0750); err != nil {
+				log.Fatalf("error writing %s: %v", fn, err)
+			}
+		}
 		log.Printf("downloading album %s.", albumJ)
-		photos, err := picago.GetPhotos(pica, userid, album.ID)
+		photos, err := picago.GetPhotos(client, userid, album.ID)
 		if err != nil {
 			log.Printf("error listing photos of %s: %v", album.ID, err)
 			continue
@@ -51,6 +72,39 @@ func main() {
 				log.Fatalf("error marshaling %#v: %v", photo, err)
 			}
 			log.Printf("Photo: %s", photoJ)
+
+			if !download {
+				continue
+			}
+			if len(photo.URL) > 8 && len(filepath.Base(photo.URL[8:])) < 128 {
+				fn = filepath.Base(photo.URL[8:])
+				ext := filepath.Ext(fn)
+				fn = fn[:len(fn)-len(ext)] + "-" + photo.ID + ext
+			} else {
+				fn = photo.ID + "." + strings.SplitN(photo.Type, "/", 2)[1]
+			}
+			fn = filepath.Join(dir, fn)
+			if err = ioutil.WriteFile(fn+".json", photoJ, 0750); err != nil {
+				log.Fatalf("error writing %s.json: %v", fn, err)
+			}
+			if err = downloadTo(fn, client, photo.URL); err != nil {
+				log.Fatalf("downloading %s: %v", photo.URL, err)
+			}
 		}
 	}
+}
+
+func downloadTo(fn string, client *http.Client, url string) error {
+	body, err := picago.DownloadPhoto(client, url)
+	if err != nil {
+		return err
+	}
+	defer body.Close()
+	fh, err := os.Create(fn)
+	if err != nil {
+		return err
+	}
+	defer fh.Close()
+	_, err = io.Copy(fh, body)
+	return err
 }
