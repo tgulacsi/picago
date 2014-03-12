@@ -8,7 +8,6 @@ package main
 import (
 	"flag"
 	"log"
-	"net/http"
 	"os"
 
 	"github.com/tgulacsi/picago"
@@ -18,11 +17,16 @@ import (
 func main() {
 	flagID := flag.String("id", os.Getenv("CLIENT_ID"), "application client ID")
 	flagSecret := flag.String("secret", os.Getenv("CLIENT_SECRET"), "application client secret")
+	flagCode := flag.String("code", os.Getenv("AUTH_CODE"), "authorization code")
+	flagTokenCache := flag.String("cache", "token-cache.json", "token cache filename")
 
 	flag.Parse()
 	userid := flag.Arg(0)
 
-	pica := picago.NewClient(*flagID, *flagSecret)
+	pica, err := picago.NewClient(*flagID, *flagSecret, *flagCode, *flagTokenCache)
+	if err != nil {
+		log.Fatalf("error with authorization: %v", err)
+	}
 	albums, err := picago.GetAlbums(pica, userid)
 	if err != nil {
 		log.Fatalf("error listing albums: %v", albums)
@@ -30,7 +34,7 @@ func main() {
 
 	for _, album := range albums {
 		log.Printf("downloading album %s.", album)
-		photos, err := picago.GetPhotos(client, userid, album.ID)
+		photos, err := picago.GetPhotos(pica, userid, album.ID)
 		if err != nil {
 			log.Printf("error listing photos of %s: %v", album.ID, err)
 			continue
