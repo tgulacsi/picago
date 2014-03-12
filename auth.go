@@ -50,7 +50,7 @@ func NewClient(id, secret, code, tokenCacheFilename string) (*http.Client, error
 			if err != nil {
 				return nil, err
 			}
-			codech := make(chan string, 1)
+			donech := make(chan struct{}, 1)
 			config.RedirectURL = "http://" + l.Addr().String()
 			// Get an authorization code from the data provider.
 			// ("Please ask the user if I can access this resource.")
@@ -58,12 +58,12 @@ func NewClient(id, secret, code, tokenCacheFilename string) (*http.Client, error
 			fmt.Println("Visit this URL to get a code, then run again with code=YOUR_CODE\n")
 			fmt.Println(url)
 
-			srv := &http.Server{Handler: NewAuthorizeHandler(codech, transport)}
+			srv := &http.Server{Handler: NewAuthorizeHandler(transport, donech)}
 			go srv.Serve(l)
-			code = <-codech
+			<-donech
 			l.Close()
 
-			if code == "" {
+			if transport.Token == nil {
 				return nil, ErrCodeNeeded
 			}
 		}
@@ -79,7 +79,9 @@ func NewClient(id, secret, code, tokenCacheFilename string) (*http.Client, error
 	return &http.Client{Transport: transport}, nil
 }
 
-func NewAuthorizeHandler(codech chan<- string, transport *oauth.Transport) http.HandlerFunc {
+// NewAuthorizeHandler returns a http.HandlerFunc which will set the Token of
+// the given oauth.Transport and send a struct{} on the donech on success.
+func NewAuthorizeHandler(transport *oauth.Transport, donech chan<- struct{}) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		token, err := transport.Exchange(r.FormValue("code"))
 		if err != nil {
@@ -88,7 +90,7 @@ func NewAuthorizeHandler(codech chan<- string, transport *oauth.Transport) http.
 		}
 		transport.Token = token
 		// The Transport now has a valid Token.
-		codech <- r.FormValue("code")
+		donech <- struct{}{}
 	}
 }
 

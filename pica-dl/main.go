@@ -6,6 +6,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"log"
 	"os"
@@ -29,11 +30,15 @@ func main() {
 	}
 	albums, err := picago.GetAlbums(pica, userid)
 	if err != nil {
-		log.Fatalf("error listing albums: %v", albums)
+		log.Fatalf("error listing albums: %v", err)
 	}
 
 	for _, album := range albums {
-		log.Printf("downloading album %s.", album)
+		albumJ, err := json.Marshal(album)
+		if err != nil {
+			log.Fatalf("error marshaling %#v: %v", album, err)
+		}
+		log.Printf("downloading album %s.", albumJ)
 		photos, err := picago.GetPhotos(pica, userid, album.ID)
 		if err != nil {
 			log.Printf("error listing photos of %s: %v", album.ID, err)
@@ -41,7 +46,11 @@ func main() {
 		}
 		log.Printf("album %s contains %d photos.", album.ID, len(photos))
 		for _, photo := range photos {
-			log.Printf("Photo: %s", photo)
+			photoJ, err := json.Marshal(photo)
+			if err != nil {
+				log.Fatalf("error marshaling %#v: %v", photo, err)
+			}
+			log.Printf("Photo: %s", photoJ)
 		}
 	}
 }

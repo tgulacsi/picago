@@ -5,7 +5,9 @@
 package picago
 
 import (
+	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"strconv"
@@ -35,11 +37,18 @@ type Photo struct {
 // GetAlbums returns the list of albums of the given userID.
 // If userID is empty, "default" is used.
 func GetAlbums(client *http.Client, userID string) ([]Album, error) {
+	if userID == "" {
+		userID = "default"
+	}
 	resp, err := client.Get(strings.Replace(albumURL, "%(userID)s", userID, 1))
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode >= http.StatusBadRequest {
+		buf, _ := ioutil.ReadAll(resp.Body)
+		return nil, fmt.Errorf("GetAlbums(%s)=%s %s\n%s", userID, resp.Request.URL, resp.Status, buf)
+	}
 	feed, err := ParseAtom(resp.Body)
 	if err != nil {
 		return nil, err
@@ -74,12 +83,19 @@ func GetAlbums(client *http.Client, userID string) ([]Album, error) {
 }
 
 func GetPhotos(client *http.Client, userID, albumID string) ([]Photo, error) {
+	if userID == "" {
+		userID = "default"
+	}
 	url := strings.Replace(photoURL, "%(userID)s", userID, 1)
 	resp, err := client.Get(strings.Replace(url, "%(albumID)s", albumID, 1))
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode >= http.StatusBadRequest {
+		buf, _ := ioutil.ReadAll(resp.Body)
+		return nil, fmt.Errorf("GetPhotos(%s, %s)=%s %s\n%s", userID, albumID, resp.Request.URL, resp.Status, buf)
+	}
 	feed, err := ParseAtom(resp.Body)
 	if err != nil {
 		return nil, err
