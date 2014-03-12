@@ -9,16 +9,21 @@ import (
 	"flag"
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/tgulacsi/picago"
 )
 
+// See https://developers.google.com/accounts/docs/OAuth2InstalledApp .
 func main() {
+	flagID := flag.String("id", os.Getenv("CLIENT_ID"), "application client ID")
+	flagSecret := flag.String("secret", os.Getenv("CLIENT_SECRET"), "application client secret")
+
 	flag.Parse()
 	userid := flag.Arg(0)
 
-	client := &http.Client{}
-	albums, err := picago.GetAlbums(client, userid)
+	pica := picago.NewClient(*flagID, *flagSecret)
+	albums, err := picago.GetAlbums(pica, userid)
 	if err != nil {
 		log.Fatalf("error listing albums: %v", albums)
 	}
