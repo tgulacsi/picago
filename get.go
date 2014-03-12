@@ -19,7 +19,9 @@ import (
 )
 
 const albumURL = "https://picasaweb.google.com/data/feed/api/user/{userID}?start-index={startIndex}"
-const photoURL = "https://picasaweb.google.com/data/feed/api/user/{userID}/albumid/{albumID}?start-index={startIndex}"
+
+// imgmax=d is needed for original photo's download
+const photoURL = "https://picasaweb.google.com/data/feed/api/user/{userID}/albumid/{albumID}?imgmax=d&start-index={startIndex}"
 
 var DebugDir string
 

@@ -10,6 +10,3 @@ After getting a client ID and secret from , you can run the example app as
 
 This will download all photos from all albums under /tmp/pica.
 Each album and photo is accompanied with a .json file containing some metadata.
-
-## Known Issues
-The download URL is for a small image, not the original.
