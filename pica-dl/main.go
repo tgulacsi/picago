@@ -14,7 +14,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/tgulacsi/picago"
 )
@@ -50,11 +49,11 @@ func main() {
 			log.Fatalf("error marshaling %#v: %v", album, err)
 		}
 		if download {
-			dir = filepath.Join(*flagDir, album.ID)
+			dir = filepath.Join(*flagDir, album.Name)
 			if err = os.MkdirAll(dir, 0750); err != nil {
 				log.Fatalf("cannot create directory %s: %v", dir, err)
 			}
-			fn = filepath.Join(dir, "album-"+album.ID+".json")
+			fn = filepath.Join(dir, "album-"+album.Name+".json")
 			if err = ioutil.WriteFile(fn, albumJ, 0750); err != nil {
 				log.Fatalf("error writing %s: %v", fn, err)
 			}
@@ -76,14 +75,7 @@ func main() {
 			if !download {
 				continue
 			}
-			if len(photo.URL) > 8 && len(filepath.Base(photo.URL[8:])) < 128 {
-				fn = filepath.Base(photo.URL[8:])
-				ext := filepath.Ext(fn)
-				fn = fn[:len(fn)-len(ext)] + "-" + photo.ID + ext
-			} else {
-				fn = photo.ID + "." + strings.SplitN(photo.Type, "/", 2)[1]
-			}
-			fn = filepath.Join(dir, fn)
+			fn = filepath.Join(dir, photo.Filename())
 			if err = ioutil.WriteFile(fn+".json", photoJ, 0750); err != nil {
 				log.Fatalf("error writing %s.json: %v", fn, err)
 			}

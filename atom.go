@@ -12,6 +12,7 @@ import (
 
 type Atom struct {
 	ID           string    `xml:"id"`
+	Name         string    `xml:"name"`
 	Updated      time.Time `xml:"updated"`
 	Title        string    `xml:"title"`
 	Subtitle     string    `xml:"subtitle"`
@@ -30,6 +31,7 @@ type Entry struct {
 	ID        string       `xml:"http://schemas.google.com/photos/2007 id"`
 	Published time.Time    `xml:"published"`
 	Updated   time.Time    `xml:"updated"`
+	Name      string       `xml:"http://schemas.google.com/photos/2007 name"`
 	Title     string       `xml:"title"`
 	Summary   string       `xml:"summary"`
 	Links     []Link       `xml:"link"`
@@ -38,8 +40,20 @@ type Entry struct {
 	NumPhotos int          `xml:"numphotos"`
 	Content   EntryContent `xml:"content"`
 	Media     Media        `xml:"group"`
-	ExifUID   string       `xml:"tags>imageUniqueID"`
+	Exif      Exif         `xml:"tags"`
 	Point     string       `xml:"where>Point>pos"`
+}
+
+type Exif struct {
+	FStop       float32 `xml:"fstop"`
+	Make        string  `xml:"make"`
+	Model       string  `xml:"model"`
+	Exposure    float32 `xml:"exposure"`
+	Flash       bool    `xml:"flash"`
+	FocalLength float32 `xml:"focallength"`
+	ISO         int32   `xml:"iso"`
+	Timestamp   int64   `xml:"time"`
+	UID         string  `xml:"imageUniqueID"`
 }
 
 type Link struct {

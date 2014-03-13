@@ -26,19 +26,38 @@ const photoURL = "https://picasaweb.google.com/data/feed/api/user/{userID}/album
 var DebugDir string
 
 type Album struct {
-	ID, Title, Summary, Description, Location string
-	AuthorName, AuthorURI                     string
-	Keywords                                  []string
-	Published, Updated                        time.Time
-	URL                                       string
+	ID, Name, Title, Summary, Description, Location string
+	AuthorName, AuthorURI                           string
+	Keywords                                        []string
+	Published, Updated                              time.Time
+	URL                                             string
 }
 
 type Photo struct {
-	ID, ExifUID, Title, Summary, Description, Location string
-	Keywords                                           []string
-	Published, Updated                                 time.Time
-	Latitude, Longitude                                float64
-	URL, Type                                          string
+	ID, Title, Summary, Description, Location string
+	Keywords                                  []string
+	Published, Updated                        time.Time
+	Latitude, Longitude                       float64
+	URL, Type                                 string
+	Exif                                      Exif
+}
+
+// Filename returns the filename of the photo (from title or ID + type).
+func (p Photo) Filename() string {
+	fn := p.Title
+	if fn == "" {
+		if len(p.URL) > 8 {
+			bn := filepath.Base(p.URL[8:])
+			if len(bn) < 128 {
+				ext := filepath.Ext(bn)
+				fn = bn[:len(bn)-len(ext)] + "-" + p.ID + ext
+			}
+			if fn == "" {
+				fn = p.ID + "." + strings.SplitN(p.Type, "/", 2)[1]
+			}
+		}
+	}
+	return fn
 }
 
 // GetAlbums returns the list of albums of the given userID.
@@ -87,8 +106,9 @@ func getAlbums(albums []Album, client *http.Client, url string, startIndex int) 
 		}
 		albums = append(albums, Album{
 			ID:          entry.ID,
+			Name:        entry.Name,
 			Summary:     entry.Summary,
-			Title:       entry.Media.Title,
+			Title:       entry.Title,
 			Description: entry.Media.Description,
 			Location:    entry.Location,
 			AuthorName:  entry.Author.Name,
@@ -157,11 +177,15 @@ func getPhotos(photos []Photo, client *http.Client, url string, startIndex int) 
 		if url == "" {
 			url, typ = entry.Media.Content.URL, entry.Media.Content.Type
 		}
+		title := entry.Title
+		if title == "" {
+			title = entry.Media.Title
+		}
 		photos = append(photos, Photo{
 			ID:          entry.ID,
-			ExifUID:     entry.ExifUID,
+			Exif:        entry.Exif,
 			Summary:     entry.Summary,
-			Title:       entry.Media.Title,
+			Title:       title,
 			Description: entry.Media.Description,
 			Location:    entry.Location,
 			//AuthorName:  entry.Author.Name,
