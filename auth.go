@@ -10,7 +10,7 @@ import (
 	"net"
 	"net/http"
 
-	"code.google.com/p/goauth2/oauth"
+	"camlistore.org/third_party/code.google.com/p/goauth2/oauth"
 )
 
 const picasaScope = "https://picasaweb.google.com/data/"
@@ -24,21 +24,23 @@ func Authorize(ID, secret string) error {
 	return errors.New("Not implemented")
 }
 
+// NewClient returns an authorized http.Client usable for requests,
+// caching tokens in the given file.
+func NewClient(id, secret, code, tokenCacheFilename string) (*http.Client, error) {
+	return NewClientCache(id, secret, code, oauth.CacheFile(tokenCacheFilename))
+}
+
 // For redirect_uri, see https://developers.google.com/accounts/docs/OAuth2InstalledApp#choosingredirecturi .
 //
-func NewClient(id, secret, code, tokenCacheFilename string) (*http.Client, error) {
-	config := &oauth.Config{
-		ClientId:     id,
-		ClientSecret: secret,
-		AuthURL:      "https://accounts.google.com/o/oauth2/auth",
-		TokenURL:     "https://accounts.google.com/o/oauth2/token",
-		Scope:        picasaScope,
-		TokenCache:   oauth.CacheFile(tokenCacheFilename),
+// NewClientCache returns an authorized http.Client with the given oauth.Cache implementation
+func NewClientCache(id, secret, code string, cache oauth.Cache) (*http.Client, error) {
+	transport, err := NewTransport(id, secret, cache)
+	if err != nil {
+		return nil, err
 	}
-	transport := &oauth.Transport{Config: config}
 
 	// Try to pull the token from the cache; if this fails, we need to get one.
-	token, err := config.TokenCache.Token()
+	token, err := transport.Config.TokenCache.Token()
 	if err == nil {
 		transport.Token = token
 	} else {
@@ -51,10 +53,10 @@ func NewClient(id, secret, code, tokenCacheFilename string) (*http.Client, error
 				return nil, err
 			}
 			donech := make(chan struct{}, 1)
-			config.RedirectURL = "http://" + l.Addr().String()
+			transport.Config.RedirectURL = "http://" + l.Addr().String()
 			// Get an authorization code from the data provider.
 			// ("Please ask the user if I can access this resource.")
-			url := config.AuthCodeURL("picago")
+			url := transport.Config.AuthCodeURL("picago")
 			fmt.Println("Visit this URL to get a code, then run again with code=YOUR_CODE\n")
 			fmt.Println(url)
 
@@ -77,6 +79,21 @@ func NewClient(id, secret, code, tokenCacheFilename string) (*http.Client, error
 		}
 	}
 	return &http.Client{Transport: transport}, nil
+}
+
+func NewTransport(id, secret string, cache oauth.Cache) (*oauth.Transport, error) {
+	if id == "" || secret == "" {
+		return nil, errors.New("Client ID and secret is needed!")
+	}
+	config := &oauth.Config{
+		ClientId:     id,
+		ClientSecret: secret,
+		AuthURL:      "https://accounts.google.com/o/oauth2/auth",
+		TokenURL:     "https://accounts.google.com/o/oauth2/token",
+		Scope:        picasaScope,
+		TokenCache:   cache,
+	}
+	return &oauth.Transport{Config: config}, nil
 }
 
 // NewAuthorizeHandler returns a http.HandlerFunc which will set the Token of
