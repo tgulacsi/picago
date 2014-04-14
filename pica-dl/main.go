@@ -35,6 +35,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("error with authorization: %v", err)
 	}
+	user, err := picago.GetUser(client, "")
+	log.Printf("user=%#v err=%v", user, err)
+
 	albums, err := picago.GetAlbums(client, userid)
 	if err != nil {
 		log.Fatalf("error listing albums: %v", err)

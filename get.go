@@ -18,12 +18,19 @@ import (
 	"time"
 )
 
-const albumURL = "https://picasaweb.google.com/data/feed/api/user/{userID}?start-index={startIndex}"
+const (
+	albumURL = "https://picasaweb.google.com/data/feed/api/user/{userID}?start-index={startIndex}"
 
-// imgmax=d is needed for original photo's download
-const photoURL = "https://picasaweb.google.com/data/feed/api/user/{userID}/albumid/{albumID}?imgmax=d&start-index={startIndex}"
+	// imgmax=d is needed for original photo's download
+	photoURL = "https://picasaweb.google.com/data/feed/api/user/{userID}/albumid/{albumID}?imgmax=d&start-index={startIndex}"
+	userURL  = "https://picasaweb.google.com/data/feed/api/user/{userID}/contacts?kind=user"
+)
 
 var DebugDir string
+
+type User struct {
+	ID, URI, Name, Thumbnail string
+}
 
 type Album struct {
 	ID, Name, Title, Summary, Description, Location string
@@ -236,4 +243,28 @@ func DownloadPhoto(client *http.Client, url string) (io.ReadCloser, error) {
 		return nil, fmt.Errorf("downloading %s: %s: %s", url, resp.Status, buf)
 	}
 	return resp.Body, nil
+}
+
+// GetUser returns the user's info
+func GetUser(client *http.Client, userID string) (User, error) {
+	if userID == "" {
+		userID = "default"
+	}
+	url := strings.Replace(userURL, "{userID}", userID, 1)
+	feed, err := downloadAndParse(client, url)
+	if err != nil {
+		return User{}, err
+	}
+	uri := feed.Author.URI
+	id := uri
+	i := strings.LastIndex(uri, "/")
+	if i >= 0 {
+		id = uri[i+1:]
+	}
+	return User{
+		ID:        id,
+		URI:       feed.Author.URI,
+		Name:      feed.Author.Name,
+		Thumbnail: feed.Thumbnail,
+	}, nil
 }
