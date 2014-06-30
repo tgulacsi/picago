@@ -212,12 +212,12 @@ func getPhotos(photos []Photo, client *http.Client, url string, startIndex int) 
 func downloadAndParse(client *http.Client, url string) (*Atom, error) {
 	resp, err := client.Get(url)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("downloadAndParse: get %q: %v", url, err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode >= http.StatusBadRequest {
 		buf, _ := ioutil.ReadAll(resp.Body)
-		return nil, fmt.Errorf("downloadAndParse=%s %s\n%s", resp.Request.URL, resp.Status, buf)
+		return nil, fmt.Errorf("downloadAndParse(%s) got %s (%s)", url, resp.Status, buf)
 	}
 	var r io.Reader = resp.Body
 	if DebugDir != "" {
@@ -253,7 +253,7 @@ func GetUser(client *http.Client, userID string) (User, error) {
 	url := strings.Replace(userURL, "{userID}", userID, 1)
 	feed, err := downloadAndParse(client, url)
 	if err != nil {
-		return User{}, err
+		return User{}, fmt.Errorf("error geting %s: %v", url, err)
 	}
 	uri := feed.Author.URI
 	id := uri
