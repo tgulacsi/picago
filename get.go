@@ -253,7 +253,7 @@ func GetUser(client *http.Client, userID string) (User, error) {
 	url := strings.Replace(userURL, "{userID}", userID, 1)
 	feed, err := downloadAndParse(client, url)
 	if err != nil {
-		return User{}, fmt.Errorf("error geting %s: %v", url, err)
+		return User{}, fmt.Errorf("GetUser: downloading %s: %v", url, err)
 	}
 	uri := feed.Author.URI
 	id := uri
