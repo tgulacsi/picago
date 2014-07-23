@@ -126,7 +126,8 @@ func getAlbums(albums []Album, client *http.Client, url string, startIndex int) 
 			URL:         albumURL,
 		})
 	}
-	return albums, startIndex+len(feed.Entries) < feed.TotalResults, nil
+	// since startIndex starts at 1, we need to compensate for this, just as we do for photos.
+	return albums, startIndex+len(feed.Entries) <= feed.TotalResults, nil
 }
 
 func GetPhotos(client *http.Client, userID, albumID string) ([]Photo, error) {
@@ -206,7 +207,8 @@ func getPhotos(photos []Photo, client *http.Client, url string, startIndex int) 
 			Longitude: long,
 		})
 	}
-	return photos, len(photos) < feed.NumPhotos, nil
+	// startIndex starts with 1, we need to compensate for it.
+	return photos, startIndex+len(feed.Entries) <= feed.NumPhotos, nil
 }
 
 func downloadAndParse(client *http.Client, url string) (*Atom, error) {
