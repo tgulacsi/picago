@@ -78,7 +78,7 @@ func main() {
 			if !download {
 				continue
 			}
-			fn = filepath.Join(dir, photo.Filename())
+			fn = filepath.Join(dir, photo.Filename)
 			if err = ioutil.WriteFile(fn+".json", photoJ, 0750); err != nil {
 				log.Fatalf("error writing %s.json: %v", fn, err)
 			}

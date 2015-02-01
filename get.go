@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 	neturl "net/url"
 	"os"
@@ -26,45 +25,91 @@ const (
 	userURL  = "https://picasaweb.google.com/data/feed/api/user/{userID}/contacts?kind=user"
 )
 
-var DebugDir string
+var DebugDir = os.Getenv("PICAGO_DEBUG_DIR")
 
 type User struct {
 	ID, URI, Name, Thumbnail string
 }
 
+// An Album is a collection of Picasaweb or Google+ photos.
 type Album struct {
-	ID, Name, Title, Summary, Description, Location string
-	AuthorName, AuthorURI                           string
-	Keywords                                        []string
-	Published, Updated                              time.Time
-	URL                                             string
+	// ID is the stable identifier for an album.
+	// e.g. "6041693388376552305"
+	ID string
+
+	// Name appears to be the Title, but with spaces removed. It
+	// shows up in URLs but is not a stable
+	// identifier. e.g. "BikingWithBlake"
+	Name string
+
+	// Title is the title of the album.
+	// e.g. "Biking with Blake"
+	Title string
+
+	// Description is the Picasaweb "Description" field, and does
+	// not appear available or shown in G+ Photos. It may be
+	// contain newlines.
+	Description string
+
+	// Location is free-form location text. e.g. "San Bruno Mountain"
+	Location string
+
+	// URL is the main human-oriented (HTML) URL to the album.
+	URL string
+
+	// Published is the either the time the user actually created
+	// and published the gallery or (in the case of Picasaweb at
+	// least), the date that the user set on the gallery.  It will
+	// be at day granularity, but the hour will be adjusted based
+	// on whatever timezone the user is it. For instance, setting
+	// July 21, 2014 while in California results in a time of
+	// 2014-07-21T07:00:00.000Z since that was the UTC time at
+	// which it became July 21st in US/Pacific on that day.
+	Published time.Time
+
+	// Updated is the server time any property of the gallery was
+	// changed.  It appears to be at millisecond granularity.
+	Updated time.Time
+
+	AuthorName, AuthorURI string
 }
 
+// A Photo is a photo (or video) in a Picasaweb (or G+) gallery.
 type Photo struct {
-	ID, Title, Summary, Description, Location string
-	Keywords                                  []string
-	Published, Updated                        time.Time
-	Latitude, Longitude                       float64
-	URL, Type                                 string
-	Exif                                      Exif
-}
+	// ID is the stable identifier for the photo.
+	ID string
 
-// Filename returns the filename of the photo (from title or ID + type).
-func (p Photo) Filename() string {
-	fn := p.Title
-	if fn == "" {
-		if len(p.URL) > 8 {
-			bn := filepath.Base(p.URL[8:])
-			if len(bn) < 128 {
-				ext := filepath.Ext(bn)
-				fn = bn[:len(bn)-len(ext)] + "-" + p.ID + ext
-			}
-			if fn == "" {
-				fn = p.ID + "." + strings.SplitN(p.Type, "/", 2)[1]
-			}
-		}
-	}
-	return fn
+	// Filename is the image's filename from the Atom title field.
+	Filename string
+
+	// Description is the caption of the photo.
+	Description string
+
+	Keywords           []string
+	Published, Updated time.Time
+
+	// Latitude and Longitude optionally contain the GPS coordinates
+	// of the photo.
+	Latitude, Longitude float64
+
+	// Location is free-form text describing the location of the
+	// photo.
+	Location string
+
+	// URL is the URL of the photo or video.
+	URL string
+
+	// PageURL is the URL to the page showing just this image.
+	PageURL string
+
+	// Type is the Content-Type.
+	Type string
+
+	// Position is the 1-based position within a gallery.
+	// It is zero if unknown.
+	Position int
+
+	Exif *Exif
 }
 
 // GetAlbums returns the list of albums of the given userID.
@@ -95,39 +140,41 @@ func getAlbums(albums []Album, client *http.Client, url string, startIndex int) 
 	feed, err := downloadAndParse(client,
 		strings.Replace(url, "{startIndex}", strconv.Itoa(startIndex), 1))
 	if err != nil {
-		return nil, false, err
+		return albums, false, err
 	}
 	if len(feed.Entries) == 0 {
-		return nil, false, nil
-	}
-	if cap(albums)-len(albums) < len(feed.Entries) {
-		albums = append(albums, make([]Album, 0, len(feed.Entries))...)
+		return albums, false, nil
 	}
 	for _, entry := range feed.Entries {
-		albumURL := ""
-		for _, link := range entry.Links {
-			if link.Rel == "http://schemas.google.com/g/2005#feed" {
-				albumURL = link.URL
-				break
-			}
-		}
-		albums = append(albums, Album{
-			ID:          entry.ID,
-			Name:        entry.Name,
-			Summary:     entry.Summary,
-			Title:       entry.Title,
-			Description: entry.Media.Description,
-			Location:    entry.Location,
-			AuthorName:  entry.Author.Name,
-			AuthorURI:   entry.Author.URI,
-			Keywords:    strings.Split(entry.Media.Keywords, ","),
-			Published:   entry.Published,
-			Updated:     entry.Updated,
-			URL:         albumURL,
-		})
+		albums = append(albums, entry.album())
 	}
-	// since startIndex starts at 1, we need to compensate for this, just as we do for photos.
-	return albums, startIndex+len(feed.Entries) <= feed.TotalResults, nil
+	return albums, true, nil
+}
+
+func (e *Entry) album() Album {
+	a := Album{
+		ID:          e.ID,
+		Name:        e.Name,
+		Title:       e.Title,
+		Location:    e.Location,
+		AuthorName:  e.Author.Name,
+		AuthorURI:   e.Author.URI,
+		Published:   e.Published,
+		Updated:     e.Updated,
+		Description: e.Summary,
+	}
+	for _, link := range e.Links {
+		if link.Rel == "alternate" && link.Type == "text/html" {
+			a.URL = link.URL
+			break
+		}
+	}
+	if e.Media != nil {
+		if a.Description == "" {
+			a.Description = e.Media.Description
+		}
+	}
+	return a
 }
 
 func GetPhotos(client *http.Client, userID, albumID string) ([]Photo, error) {
@@ -160,55 +207,102 @@ func getPhotos(photos []Photo, client *http.Client, url string, startIndex int) 
 		return nil, false, err
 	}
 	if len(feed.Entries) == 0 {
-		return nil, false, nil
+		return photos, false, nil
 	}
-	if cap(photos)-len(photos) < len(feed.Entries) {
-		photos = append(photos, make([]Photo, 0, len(feed.Entries))...)
+	for i, entry := range feed.Entries {
+		p, err := entry.photo()
+		if err != nil {
+			return nil, false, err
+		}
+		p.Position = startIndex + i
+		photos = append(photos, p)
 	}
-	for _, entry := range feed.Entries {
-		var lat, long float64
-		i := strings.Index(entry.Point, " ")
-		if i >= 1 {
-			lat, err = strconv.ParseFloat(entry.Point[:i], 64)
-			if err != nil {
-				log.Printf("cannot parse %q as latitude: %v", entry.Point[:i], err)
+
+	// The number of photos can change while the import is happening. More
+	// realistically, Aaron Boodman has observed feed.NumPhotos disagreeing with
+	// len(feed.Entries). So to be on the safe side, just keep trying until we
+	// get a response with zero entries.
+	return photos, true, nil
+}
+
+func (e *Entry) photo() (p Photo, err error) {
+	var lat, long float64
+	i := strings.Index(e.Point, " ")
+	if i >= 1 {
+		lat, err = strconv.ParseFloat(e.Point[:i], 64)
+		if err != nil {
+			return p, fmt.Errorf("cannot parse %q as latitude: %v", e.Point[:i], err)
+		}
+		long, err = strconv.ParseFloat(e.Point[i+1:], 64)
+		if err != nil {
+			return p, fmt.Errorf("cannot parse %q as longitude: %v", e.Point[i+1:], err)
+		}
+	}
+	if e.Point != "" && lat == 0 && long == 0 {
+		return p, fmt.Errorf("point=%q but couldn't parse it as lat/long", e.Point)
+	}
+	p = Photo{
+		ID:          e.ID,
+		Exif:        e.Exif,
+		Description: e.Summary,
+		Filename:    e.Title,
+		Location:    e.Location,
+		Published:   e.Published,
+		Updated:     e.Updated,
+		Latitude:    lat,
+		Longitude:   long,
+	}
+	for _, link := range e.Links {
+		if link.Rel == "alternate" && link.Type == "text/html" {
+			p.PageURL = link.URL
+			break
+		}
+	}
+	if e.Media != nil {
+		for _, kw := range strings.Split(e.Media.Keywords, ",") {
+			if kw := strings.TrimSpace(kw); kw != "" {
+				p.Keywords = append(p.Keywords, kw)
 			}
-			long, err = strconv.ParseFloat(entry.Point[i+1:], 64)
-			if err != nil {
-				log.Printf("cannot parse %q as longitude: %v", entry.Point[i+1:], err)
-			}
 		}
-		if entry.Point != "" && lat == 0 && long == 0 {
-			log.Fatalf("point=%q but couldn't parse it as lat/long", entry.Point)
+		if p.Description == "" {
+			p.Description = e.Media.Description
 		}
-		url, typ := entry.Content.URL, entry.Content.Type
-		if url == "" {
-			url, typ = entry.Media.Content.URL, entry.Media.Content.Type
+		if mc, ok := e.Media.bestContent(); ok {
+			p.URL, p.Type = mc.URL, mc.Type
 		}
-		title := entry.Title
-		if title == "" {
-			title = entry.Media.Title
+		if p.Filename == "" {
+			p.Filename = e.Media.Title
 		}
-		photos = append(photos, Photo{
-			ID:          entry.ID,
-			Exif:        entry.Exif,
-			Summary:     entry.Summary,
-			Title:       title,
-			Description: entry.Media.Description,
-			Location:    entry.Location,
-			//AuthorName:  entry.Author.Name,
-			//AuthorURI:   entry.Author.URI,
-			Keywords:  strings.Split(entry.Media.Keywords, ","),
-			Published: entry.Published,
-			Updated:   entry.Updated,
-			URL:       url,
-			Type:      typ,
-			Latitude:  lat,
-			Longitude: long,
-		})
 	}
-	// startIndex starts with 1, we need to compensate for it.
-	return photos, startIndex+len(feed.Entries) <= feed.NumPhotos, nil
+	return p, nil
+}
+
+func (m *Media) bestContent() (ret MediaContent, ok bool) {
+	// Find largest non-Flash video.
+	var bestPixels int64
+	for _, mc := range m.Content {
+		thisPixels := int64(mc.Width) * int64(mc.Height)
+		if mc.Medium == "video" && mc.Type != "application/x-shockwave-flash" && thisPixels > bestPixels {
+			ret = mc
+			ok = true
+			bestPixels = thisPixels
+		}
+	}
+	if ok {
+		return
+	}
+
+	// Else, just find largest anything.
+	bestPixels = 0
+	for _, mc := range m.Content {
+		thisPixels := int64(mc.Width) * int64(mc.Height)
+		if thisPixels > bestPixels {
+			ret = mc
+			ok = true
+			bestPixels = thisPixels
+		}
+	}
+	return
 }
 
 func downloadAndParse(client *http.Client, url string) (*Atom, error) {
