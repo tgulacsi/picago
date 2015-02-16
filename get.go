@@ -110,6 +110,8 @@ type Photo struct {
 	Position int
 
 	Exif *Exif
+
+	Width, Height int
 }
 
 // GetAlbums returns the list of albums of the given userID.
@@ -268,7 +270,7 @@ func (e *Entry) photo() (p Photo, err error) {
 			p.Description = e.Media.Description
 		}
 		if mc, ok := e.Media.bestContent(); ok {
-			p.URL, p.Type = mc.URL, mc.Type
+			p.URL, p.Type, p.Width, p.Height = mc.URL, mc.Type, mc.Width, mc.Height
 		}
 		if p.Filename == "" {
 			p.Filename = e.Media.Title
