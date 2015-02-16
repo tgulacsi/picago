@@ -43,6 +43,8 @@ type Entry struct {
 	Media     Media        `xml:"group"`
 	Exif      Exif         `xml:"tags"`
 	Point     string       `xml:"where>Point>pos"`
+	Width     int64        `xml:"http://schemas.google.com/photos/2007 width"`
+	Height    int64        `xml:"http://schemas.google.com/photos/2007 height"`
 }
 
 type Exif struct {

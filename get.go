@@ -47,6 +47,7 @@ type Photo struct {
 	Latitude, Longitude                       float64
 	URL, Type                                 string
 	Exif                                      Exif
+	Width, Height                             int64
 }
 
 // Filename returns the filename of the photo (from title or ID + type).
@@ -205,6 +206,8 @@ func getPhotos(photos []Photo, client *http.Client, url string, startIndex int) 
 			Type:      typ,
 			Latitude:  lat,
 			Longitude: long,
+			Width:     entry.Width,
+			Height:    entry.Height,
 		})
 	}
 	// startIndex starts with 1, we need to compensate for it.
