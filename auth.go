@@ -57,7 +57,7 @@ func NewClientCache(id, secret, code string, cache oauth.Cache) (*http.Client, e
 			// Get an authorization code from the data provider.
 			// ("Please ask the user if I can access this resource.")
 			url := transport.Config.AuthCodeURL("picago")
-			fmt.Println("Visit this URL to get a code, then run again with code=YOUR_CODE\n")
+			fmt.Println("Visit this URL to allow access to your Picasa data:\n")
 			fmt.Println(url)
 
 			srv := &http.Server{Handler: NewAuthorizeHandler(transport, donech)}
