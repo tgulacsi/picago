@@ -8,6 +8,7 @@ package main
 import (
 	"encoding/json"
 	"flag"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
@@ -27,7 +28,20 @@ func main() {
 	flagDir := flag.String("dir", "", "directory to download images to")
 	flagDebugDir := flag.String("debug", "", "set to a valid path to save the response XMLs there")
 
+	flagBBox := flag.String("bbox", "", "bounding box for the query (west,south,east,north coordinates)")
+	flagLocation := flag.String("location", "", "location for the query (e.g. London)")
+	flagText := flag.String("text", "", "text to search for in tags, comments and title")
+	flagTag := flag.String("tag", "", "tag to search for")
+
 	flag.Parse()
+	qp := picago.QueryParams{Location: *flagLocation, Text: *flagText, Tag: *flagTag}
+	if *flagBBox != "" {
+		if _, err := fmt.Sscanf(*flagBBox, "%f,%f,%f,%f",
+			&qp.BBox.West, &qp.BBox.South, &qp.BBox.East, &qp.BBox.North,
+		); err != nil {
+			log.Fatalf("error parsing bbox=%q as four floats: %v", *flagBBox, err)
+		}
+	}
 	picago.DebugDir = *flagDebugDir
 	userid := flag.Arg(0)
 
@@ -62,7 +76,7 @@ func main() {
 			}
 		}
 		log.Printf("downloading album %s.", albumJ)
-		photos, err := picago.GetPhotos(client, userid, album.ID)
+		photos, err := picago.GetPhotosSpec(client, userid, album.ID, qp)
 		if err != nil {
 			log.Printf("error listing photos of %s: %v", album.ID, err)
 			continue

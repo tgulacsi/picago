@@ -179,13 +179,80 @@ func (e *Entry) album() Album {
 	return a
 }
 
-func GetPhotos(client *http.Client, userID, albumID string) ([]Photo, error) {
+type QueryParams struct {
+	Access   Visibility
+	BBox     BoundingBox
+	Location string
+	Text     string
+	Tag      string
+}
+
+// String returns an url-encode representation of QueryParams.
+func (c QueryParams) String() string {
+	v := make(neturl.Values, 5)
+	if c.Access != DefaultVisible {
+		v.Set("access", c.Access.String())
+	}
+	if c.Text != "" {
+		v.Set("q", c.Text)
+	}
+	if c.Tag != "" {
+		v.Set("tag", c.Tag)
+	}
+	if c.Location != "" {
+		v.Set("l", c.Location)
+	}
+	bb := c.BBox
+	if !(bb.West == 0 && bb.South == 0 && bb.East == 0 && bb.North == 0) {
+		v.Set("bbox", fmt.Sprintf("%f,%f,%f,%f", bb.West, bb.South, bb.East, bb.North))
+	}
+	if len(v) == 0 {
+		return ""
+	}
+	return v.Encode()
+}
+
+type Visibility uint8
+
+const (
+	DefaultVisible = Visibility(iota)
+	AllVisible
+	PrivateVisible
+	PublicVisible
+	UserVisible
+)
+
+func (v Visibility) String() string {
+	switch v {
+	case AllVisible:
+		return "all"
+	case PrivateVisible:
+		return "private"
+	case PublicVisible:
+		return "public"
+	case UserVisible:
+		return "visible"
+	default:
+		return ""
+	}
+}
+
+type BoundingBox struct {
+	West, South, East, North float64
+}
+
+// GetPhotosSpec allows specifying parameters for the query, as in
+// https://developers.google.com/picasa-web/docs/2.0/reference#Parameters
+func GetPhotosSpec(client *http.Client, userID, albumID string, config QueryParams) ([]Photo, error) {
 	if userID == "" {
 		userID = "default"
 	}
 	url := strings.Replace(photoURL, "{userID}", userID, 1)
 	url = strings.Replace(url, "{albumID}", albumID, 1)
-
+	q := config.String()
+	if q != "" {
+		url += "&" + q
+	}
 	var photos []Photo
 	var err error
 	hasMore, startIndex := true, 1
@@ -197,6 +264,11 @@ func GetPhotos(client *http.Client, userID, albumID string) ([]Photo, error) {
 		startIndex = len(photos) + 1
 	}
 	return photos, err
+}
+
+// GetPhotos returns a list of photos from the user's specified album.
+func GetPhotos(client *http.Client, userID, albumID string) ([]Photo, error) {
+	return GetPhotosSpec(client, userID, albumID, QueryParams{})
 }
 
 func getPhotos(photos []Photo, client *http.Client, url string, startIndex int) ([]Photo, bool, error) {
