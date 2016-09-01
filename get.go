@@ -229,19 +229,21 @@ func getPhotos(photos []Photo, client *http.Client, url string, startIndex int) 
 
 func (e *Entry) photo() (p Photo, err error) {
 	var lat, long float64
-	i := strings.Index(e.Point, " ")
-	if i >= 1 {
-		lat, err = strconv.ParseFloat(e.Point[:i], 64)
-		if err != nil {
-			return p, fmt.Errorf("cannot parse %q as latitude: %v", e.Point[:i], err)
+	if e.Point != "0.0 0.0" { // ignore special case
+		i := strings.Index(e.Point, " ")
+		if i >= 1 {
+			lat, err = strconv.ParseFloat(e.Point[:i], 64)
+			if err != nil {
+				return p, fmt.Errorf("cannot parse %q as latitude: %v", e.Point[:i], err)
+			}
+			long, err = strconv.ParseFloat(e.Point[i+1:], 64)
+			if err != nil {
+				return p, fmt.Errorf("cannot parse %q as longitude: %v", e.Point[i+1:], err)
+			}
 		}
-		long, err = strconv.ParseFloat(e.Point[i+1:], 64)
-		if err != nil {
-			return p, fmt.Errorf("cannot parse %q as longitude: %v", e.Point[i+1:], err)
+		if e.Point != "" && lat == 0 && long == 0 {
+			return p, fmt.Errorf("point=%q but couldn't parse it as lat/long", e.Point)
 		}
-	}
-	if e.Point != "" && lat == 0 && long == 0 {
-		return p, fmt.Errorf("point=%q but couldn't parse it as lat/long", e.Point)
 	}
 	p = Photo{
 		ID:          e.ID,

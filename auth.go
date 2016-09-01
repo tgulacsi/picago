@@ -10,7 +10,7 @@ import (
 	"net"
 	"net/http"
 
-	"camlistore.org/third_party/code.google.com/p/goauth2/oauth"
+	"code.google.com/p/goauth2/oauth"
 )
 
 const picasaScope = "https://picasaweb.google.com/data/"

@@ -269,10 +269,10 @@ func mustParseAtom(t *testing.T, file string) *Atom {
 
 func TestVideoInGallery(t *testing.T) {
 	atom := mustParseAtom(t, "testdata/gallery-with-a-video.xml")
-	if len(atom.Entries) != 3 {
-		t.Fatalf("num entries = %d; want 3", len(atom.Entries))
+	if len(atom.Entries) != 4 {
+		t.Fatalf("num entries = %d; want 4", len(atom.Entries))
 	}
-	p, err := atom.Entries[2].photo()
+	p, err := atom.Entries[3].photo()
 	if err != nil {
 		t.Fatal(err)
 	}
