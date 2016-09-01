@@ -254,6 +254,9 @@ func (e *Entry) photo() (p Photo, err error) {
 		Latitude:    lat,
 		Longitude:   long,
 	}
+	// Sanitise Filename in case of slashes in filename (sometimes present in google photos)
+	p.Filename = strings.Split(p.Filename, "/")[len(strings.Split(p.Filename, "/"))-1]
+
 	for _, link := range e.Links {
 		if link.Rel == "alternate" && link.Type == "text/html" {
 			p.PageURL = link.URL
