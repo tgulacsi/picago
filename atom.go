@@ -98,3 +98,11 @@ func ParseAtom(r io.Reader) (*Atom, error) {
 	}
 	return result, nil
 }
+
+func ParseEntry(r io.Reader) (*Entry, error) {
+	result := new(Entry)
+	if err := xml.NewDecoder(r).Decode(result); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
