@@ -308,9 +308,9 @@ func TestAlbumFromEntry(t *testing.T) {
 		return ret
 	}
 	want := []Album{
-		Album{ID: "6040139514831220113", Name: "BikingWithBlake", Title: "Biking with Blake", Description: "Description is biking up San Bruno mountain.\n\nAnd a newline.", Location: "San Bruno Mt, CA", AuthorName: "Gast Erson", AuthorURI: "https://picasaweb.google.com/114403741484702971746", Published: tm("2014-07-22T07:00:00.000Z"), Updated: tm("2014-07-28T22:22:25.577Z"), URL: "https://picasaweb.google.com/114403741484702971746/BikingWithBlake"},
-		Album{ID: "6041693388376552305", Name: "Mexico", Title: "Mexico", Description: "", Location: "", AuthorName: "Gast Erson", AuthorURI: "https://picasaweb.google.com/114403741484702971746", Published: tm("2014-07-30T03:36:00.000Z"), Updated: tm("2014-07-30T19:46:05.346Z"), URL: "https://picasaweb.google.com/114403741484702971746/Mexico"},
-		Album{ID: "6041709940397032273", Name: "TestingOver2048", Title: "testing over 2048", Description: "", Location: "", AuthorName: "Gast Erson", AuthorURI: "https://picasaweb.google.com/114403741484702971746", Published: tm("2014-07-30T04:40:14.000Z"), Updated: tm("2014-07-30T05:01:02.919Z"), URL: "https://picasaweb.google.com/114403741484702971746/TestingOver2048"},
+		Album{ID: "6040139514831220113", Name: "BikingWithBlake", Title: "Biking with Blake", Rights: "protected", Description: "Description is biking up San Bruno mountain.\n\nAnd a newline.", Location: "San Bruno Mt, CA", AuthorName: "Gast Erson", AuthorURI: "https://picasaweb.google.com/114403741484702971746", Published: tm("2014-07-22T07:00:00.000Z"), Updated: tm("2014-07-28T22:22:25.577Z"), URL: "https://picasaweb.google.com/114403741484702971746/BikingWithBlake"},
+		Album{ID: "6041693388376552305", Name: "Mexico", Title: "Mexico", Rights: "protected", Description: "", Location: "", AuthorName: "Gast Erson", AuthorURI: "https://picasaweb.google.com/114403741484702971746", Published: tm("2014-07-30T03:36:00.000Z"), Updated: tm("2014-07-30T19:46:05.346Z"), URL: "https://picasaweb.google.com/114403741484702971746/Mexico"},
+		Album{ID: "6041709940397032273", Name: "TestingOver2048", Title: "testing over 2048", Rights: "protected", Description: "", Location: "", AuthorName: "Gast Erson", AuthorURI: "https://picasaweb.google.com/114403741484702971746", Published: tm("2014-07-30T04:40:14.000Z"), Updated: tm("2014-07-30T05:01:02.919Z"), URL: "https://picasaweb.google.com/114403741484702971746/TestingOver2048"},
 	}
 	if len(got) != len(want) {
 		t.Fatalf("got %d entries, want %d", len(got), len(want))

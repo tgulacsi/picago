@@ -46,6 +46,14 @@ type Album struct {
 	// e.g. "Biking with Blake"
 	Title string
 
+	// AlbumType
+	// e.g. "Blogger", "ProfilePhotos", "InstantUpload", or empty sring
+	AlbumType string
+
+	// Rights
+	// e.g. "public", "protected", or "private"
+	Rights string
+
 	// Description is the Picasaweb "Description" field, and does
 	// not appear available or shown in G+ Photos. It may be
 	// contain newlines.
@@ -158,6 +166,8 @@ func (e *Entry) album() Album {
 		ID:          e.ID,
 		Name:        e.Name,
 		Title:       e.Title,
+		Rights:      e.Rights,
+		AlbumType:   e.AlbumType,
 		Location:    e.Location,
 		AuthorName:  e.Author.Name,
 		AuthorURI:   e.Author.URI,
