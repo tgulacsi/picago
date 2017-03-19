@@ -1,5 +1,5 @@
 # picago
-Picago is a small Go library for downloading photos from Picasa Web.
+Picago is a small Go library for downloading and uploading photos from Picasa Web.
 
 ## Install
     go install github.com/tgulacsi/picago/pica-dl

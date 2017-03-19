@@ -5,6 +5,7 @@
 package picago
 
 import (
+	"encoding/xml"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -45,6 +46,14 @@ type Album struct {
 	// Title is the title of the album.
 	// e.g. "Biking with Blake"
 	Title string
+
+	// AlbumType
+	// e.g. "Blogger", "ProfilePhotos", "InstantUpload", or empty sring
+	AlbumType string
+
+	// Rights
+	// e.g. "public", "protected", or "private"
+	Rights string
 
 	// Description is the Picasaweb "Description" field, and does
 	// not appear available or shown in G+ Photos. It may be
@@ -158,6 +167,8 @@ func (e *Entry) album() Album {
 		ID:          e.ID,
 		Name:        e.Name,
 		Title:       e.Title,
+		Rights:      e.Rights,
+		AlbumType:   e.AlbumType,
 		Location:    e.Location,
 		AuthorName:  e.Author.Name,
 		AuthorURI:   e.Author.URI,
@@ -282,6 +293,13 @@ func (e *Entry) photo() (p Photo, err error) {
 		}
 	}
 	return p, nil
+}
+
+func (e *Entry) DecodeReader(r io.Reader) error {
+	if err := xml.NewDecoder(r).Decode(e); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (m *Media) bestContent() (ret MediaContent, ok bool) {
