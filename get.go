@@ -5,6 +5,7 @@
 package picago
 
 import (
+	"encoding/xml"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -292,6 +293,13 @@ func (e *Entry) photo() (p Photo, err error) {
 		}
 	}
 	return p, nil
+}
+
+func (e *Entry) DecodeReader(r io.Reader) error {
+	if err := xml.NewDecoder(r).Decode(e); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (m *Media) bestContent() (ret MediaContent, ok bool) {

@@ -8,7 +8,6 @@ import (
 	"bytes"
 	"fmt"
 	"html"
-	"io"
 	"io/ioutil"
 	"mime/multipart"
 	"net/http"
@@ -38,17 +37,15 @@ func UploadPhoto(client *http.Client, userID, albumID, fileName, summary, MIME s
 	url = url[0:strings.LastIndex(url, "?")]
 
 	buf := bytes.NewBuffer(nil)
-	buf.WriteString("Media multipart posting\r\n")
 	w := multipart.NewWriter(buf)
-	w.SetBoundary("_END_OF_PART_")
 	sw, _ := w.CreatePart(textproto.MIMEHeader{
 		"Content-Type": []string{"application/atom+xml"},
 	})
-	io.WriteString(sw, fmt.Sprintf(
+	fmt.Fprintf(sw,
 		"<entry xmlns='http://www.w3.org/2005/Atom'><title>%s</title><summary>%s</summary><category scheme='http://schemas.google.com/g/2005#kind' term='http://schemas.google.com/photos/2007#photo'/></entry>\r\n",
 		html.EscapeString(fileName),
 		html.EscapeString(summary),
-	))
+	)
 	sw, _ = w.CreatePart(textproto.MIMEHeader{
 		"Content-Type": []string{MIME},
 	})
@@ -59,8 +56,7 @@ func UploadPhoto(client *http.Client, userID, albumID, fileName, summary, MIME s
 	if err != nil {
 		return nil, err
 	}
-
-	req.Header.Set("Content-Type", fmt.Sprintf("multipart/related; boundary=\"%s\"", w.Boundary()))
+	req.Header.Set("Content-Type", "multipart/related; boundary="+w.Boundary())
 	req.Header.Set("Content-Length", strconv.Itoa(buf.Len()))
 	req.Header.Set("MIME-version", "1.0")
 
@@ -73,11 +69,11 @@ func UploadPhoto(client *http.Client, userID, albumID, fileName, summary, MIME s
 		buf, _ := ioutil.ReadAll(resp.Body)
 		return nil, fmt.Errorf("UploadPhoto(%s) got %s (%s)", url, resp.Status, buf)
 	}
-	entry, err := ParseEntry(resp.Body)
-	if err != nil {
+
+	var entry Entry
+	if err := entry.DecodeReader(resp.Body); err != nil {
 		return nil, err
 	}
-
 	photo, err := entry.photo()
 	if err != nil {
 		return nil, err
