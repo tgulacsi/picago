@@ -13,7 +13,8 @@ import (
 	"code.google.com/p/goauth2/oauth"
 )
 
-const picasaScope = "https://picasaweb.google.com/data/"
+// OAuth2 scope, manage your Picasa account
+const PicasaScope = "https://picasaweb.google.com/data/"
 
 var ErrCodeNeeded = errors.New("Authorization code is needed")
 
@@ -90,7 +91,7 @@ func NewTransport(id, secret string, cache oauth.Cache) (*oauth.Transport, error
 		ClientSecret: secret,
 		AuthURL:      "https://accounts.google.com/o/oauth2/auth",
 		TokenURL:     "https://accounts.google.com/o/oauth2/token",
-		Scope:        picasaScope,
+		Scope:        PicasaScope,
 		TokenCache:   cache,
 	}
 	return &oauth.Transport{Config: config}, nil
