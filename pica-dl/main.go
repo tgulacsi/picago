@@ -1,4 +1,4 @@
-// Copyright 2014 Tamás Gulácsi. All rights reserved.
+// Copyright 2017 Tamás Gulácsi. All rights reserved.
 // Use of this source code is governed by an Apache 2.0
 // license that can be found in the LICENSE file.
 
@@ -6,6 +6,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"flag"
 	"io"
@@ -14,6 +15,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/tgulacsi/picago"
 )
@@ -26,12 +28,23 @@ func main() {
 	flagTokenCache := flag.String("cache", "token-cache.json", "token cache filename")
 	flagDir := flag.String("dir", "", "directory to download images to")
 	flagDebugDir := flag.String("debug", "", "set to a valid path to save the response XMLs there")
+	flagVerbose := flag.Bool("v", false, "verbose logging")
 
 	flag.Parse()
 	picago.DebugDir = *flagDebugDir
 	userid := flag.Arg(0)
 
-	client, err := picago.NewClient(*flagID, *flagSecret, *flagCode, *flagTokenCache)
+	var Log func(...interface{}) error
+	if *flagVerbose {
+		Log = func(keyvals ...interface{}) error {
+			log.Println(keyvals...)
+			return nil
+		}
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	client, err := picago.NewClient(ctx, *flagID, *flagSecret, *flagCode, *flagTokenCache, Log)
+	cancel()
 	if err != nil {
 		log.Fatalf("error with authorization: %v", err)
 	}
@@ -45,7 +58,7 @@ func main() {
 	log.Printf("user %s has %d albums.", userid, len(albums))
 
 	download := *flagDir != ""
-	dir, fn := "", ""
+	var dir, fn string
 	for _, album := range albums {
 		albumJ, err := json.Marshal(album)
 		if err != nil {

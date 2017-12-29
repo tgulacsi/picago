@@ -1,4 +1,4 @@
-// Copyright 2014 Tamás Gulácsi. All rights reserved.
+// Copyright 2017 Tamás Gulácsi. All rights reserved.
 // Use of this source code is governed by an Apache 2.0
 // license that can be found in the LICENSE file.
 
@@ -296,10 +296,7 @@ func (e *Entry) photo() (p Photo, err error) {
 }
 
 func (e *Entry) DecodeReader(r io.Reader) error {
-	if err := xml.NewDecoder(r).Decode(e); err != nil {
-		return err
-	}
-	return nil
+	return xml.NewDecoder(r).Decode(e)
 }
 
 func (m *Media) bestContent() (ret MediaContent, ok bool) {

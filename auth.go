@@ -1,17 +1,33 @@
-// Copyright 2014 Tamás Gulácsi. All rights reserved.
+// Copyright 2017 Tamás Gulácsi. All rights reserved.
 // Use of this source code is governed by an Apache 2.0
 // license that can be found in the LICENSE file.
 
 package picago
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net"
 	"net/http"
 
-	"code.google.com/p/goauth2/oauth"
+	"golang.org/x/oauth2"
 )
+
+// Endpoint contains the URL of the picasa auth endpoints
+var Endpoint = oauth2.Endpoint{
+	AuthURL:  "https://accounts.google.com/o/oauth2/auth",
+	TokenURL: "https://accounts.google.com/o/oauth2/token",
+}
+
+func Config(id, secret string) *oauth2.Config {
+	return &oauth2.Config{
+		ClientID:     id,
+		ClientSecret: secret,
+		Endpoint:     Endpoint,
+		Scopes:       []string{PicasaScope},
+	}
+}
 
 // OAuth2 scope, manage your Picasa account
 const PicasaScope = "https://picasaweb.google.com/data/"
@@ -25,90 +41,75 @@ func Authorize(ID, secret string) error {
 	return errors.New("Not implemented")
 }
 
-// NewClient returns an authorized http.Client usable for requests,
-// caching tokens in the given file.
-func NewClient(id, secret, code, tokenCacheFilename string) (*http.Client, error) {
-	return NewClientCache(id, secret, code, oauth.CacheFile(tokenCacheFilename))
-}
-
 // For redirect_uri, see https://developers.google.com/accounts/docs/OAuth2InstalledApp#choosingredirecturi .
 //
-// NewClientCache returns an authorized http.Client with the given oauth.Cache implementation
-func NewClientCache(id, secret, code string, cache oauth.Cache) (*http.Client, error) {
-	transport, err := NewTransport(id, secret, cache)
+// NewClient returns an authorized http.Client usable for requests.
+func NewClient(ctx context.Context, id, secret, code, tokenCacheFilename string, Log func(...interface{}) error) (*http.Client, error) {
+	cfg := Config(id, secret)
+	var fc *FileCache
+	if tokenCacheFilename != "" {
+		var err error
+		if fc, err = NewTokenCache(tokenCacheFilename, nil, Log); err != nil {
+			return nil, err
+		}
+	}
+	t, err := cfg.Exchange(ctx, code)
+	if Log != nil {
+		Log("msg", "Exchange", "code", code, "token", t, "error", err)
+	}
+	fc.SetTokenSource(cfg.TokenSource(ctx, t))
+	if err == nil {
+		return oauth2.NewClient(ctx, fc), nil
+	}
+
+	t, err = fc.Token()
+	if Log != nil {
+		Log("msg", "fc.Token", "token", t, "error", err)
+	}
+	if err == nil {
+		return oauth2.NewClient(ctx, fc), nil
+	}
+
+	if id == "" || secret == "" {
+		return nil, errors.New("client ID and secret is needed!")
+	}
+
+	l, err := getListener()
 	if err != nil {
 		return nil, err
 	}
+	cfg.RedirectURL = "http://" + l.Addr().String()
 
-	// Try to pull the token from the cache; if this fails, we need to get one.
-	token, err := transport.Config.TokenCache.Token()
-	if err == nil {
-		transport.Token = token
-	} else {
-		if id == "" || secret == "" {
-			return nil, errors.New("token cache is empty, thus client ID and secret is needed!")
-		}
-		if code == "" {
-			l, err := getListener()
-			if err != nil {
-				return nil, err
-			}
-			donech := make(chan struct{}, 1)
-			transport.Config.RedirectURL = "http://" + l.Addr().String()
-			// Get an authorization code from the data provider.
-			// ("Please ask the user if I can access this resource.")
-			url := transport.Config.AuthCodeURL("picago")
-			fmt.Println("Visit this URL to allow access to your Picasa data:\n")
-			fmt.Println(url)
+	donech := make(chan *oauth2.Token, 1)
+	defer close(donech)
+	// Get an authorization code from the data provider.
+	// ("Please ask the user if I can access this resource.")
+	url := cfg.AuthCodeURL("picago")
+	fmt.Printf("Visit this URL to allow access to your Picasa data:\n\n")
+	fmt.Println(url)
 
-			srv := &http.Server{Handler: NewAuthorizeHandler(transport, donech)}
-			go srv.Serve(l)
-			<-donech
-			l.Close()
+	srv := &http.Server{Handler: NewAuthorizeHandler(cfg, donech)}
+	go srv.Serve(l)
+	t = <-donech
+	l.Close()
 
-			if transport.Token == nil {
-				return nil, ErrCodeNeeded
-			}
-		}
-		if transport.Token == nil {
-			// Exchange the authorization code for an access token.
-			// ("Here's the code you gave the user, now give me a token!")
-			transport.Token, err = transport.Exchange(code)
-			if err != nil {
-				return nil, fmt.Errorf("Exchange: %v", err)
-			}
-		}
+	if t == nil {
+		return nil, ErrCodeNeeded
 	}
-	return &http.Client{Transport: transport}, nil
-}
-
-func NewTransport(id, secret string, cache oauth.Cache) (*oauth.Transport, error) {
-	if id == "" || secret == "" {
-		return nil, errors.New("Client ID and secret is needed!")
-	}
-	config := &oauth.Config{
-		ClientId:     id,
-		ClientSecret: secret,
-		AuthURL:      "https://accounts.google.com/o/oauth2/auth",
-		TokenURL:     "https://accounts.google.com/o/oauth2/token",
-		Scope:        PicasaScope,
-		TokenCache:   cache,
-	}
-	return &oauth.Transport{Config: config}, nil
+	fc.SetTokenSource(cfg.TokenSource(ctx, t))
+	return oauth2.NewClient(ctx, fc), nil
 }
 
 // NewAuthorizeHandler returns a http.HandlerFunc which will set the Token of
-// the given oauth.Transport and send a struct{} on the donech on success.
-func NewAuthorizeHandler(transport *oauth.Transport, donech chan<- struct{}) http.HandlerFunc {
+// the given oauth2.Transport and send a struct{} on the donech on success.
+func NewAuthorizeHandler(cfg *oauth2.Config, donech chan<- *oauth2.Token) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		token, err := transport.Exchange(r.FormValue("code"))
-		if err != nil {
-			http.Error(w, fmt.Sprintf("error exchanging code: %v", err), http.StatusBadRequest)
+		token, err := cfg.Exchange(r.Context(), r.FormValue("code"))
+		if err == nil && token != nil {
+			donech <- token
 			return
 		}
-		transport.Token = token
-		// The Transport now has a valid Token.
-		donech <- struct{}{}
+		http.Error(w, fmt.Sprintf("error exchanging code: %v", err), http.StatusBadRequest)
 	}
 }
 
