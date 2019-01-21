@@ -1,3 +1,10 @@
+# WARNING
+As Google deprecated the Picasa API, and it won't work
+from 15 March 2019, I sunset this project.
+
+ATM Google Drive is the only way I know to retrieve your photos.
+See [Perkeep](perkeep.org) for an importer!
+
 # picago
 Picago is a small Go library for downloading and uploading photos from Picasa Web.
 
@@ -6,7 +13,7 @@ Picago is a small Go library for downloading and uploading photos from Picasa We
 
 ## Permissions
 
-You must obtain a client ID and secret from Google in order to call the APIs this project relies on. 
+You must obtain a client ID and secret from Google in order to call the APIs this project relies on.
 
 1. Go to https://console.developers.google.com/project and create a new project. You can name it whatever you want. You can also reuse an existing project if you have one.
 
